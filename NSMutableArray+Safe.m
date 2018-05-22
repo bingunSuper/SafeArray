@@ -2,8 +2,8 @@
 //  NSMutableArray+Safe.m
 //  method swizzling
 //
-//  Created by 666 on 2018/3/14.
-//  Copyright © 2018年 666. All rights reserved.
+//  Created by bgcr on 2018/3/14.
+//  Copyright © 2018年 bgcr. All rights reserved.
 //
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
@@ -60,7 +60,7 @@
     }else if (anObject){
         [self safeInsertObject:anObject atIndex:index];
     }else{
-         NSLog(@"obj is nil");
+        NSLog(@"obj is nil");
     }
 }
 
@@ -99,10 +99,10 @@
 - (void)swizzleMethod:(SEL)origSelector withMethod:(SEL)newSelector
 {
     Class class = [self class];
-
+    
     Method originalMethod = class_getInstanceMethod(class, origSelector);
     Method swizzledMethod = class_getInstanceMethod(class, newSelector);
-
+    
     BOOL didAddMethod = class_addMethod(class,
                                         origSelector,
                                         method_getImplementation(swizzledMethod),
@@ -126,10 +126,11 @@
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         id obj = [[self alloc] init];
-         //__NSArrayI(多项)  __NSArray0(0项)   __NSSingleObjectArrayI(一项) 目前就这三个类 有新的再加
+        //__NSArrayI(多项)  __NSArray0(0项)   __NSSingleObjectArrayI(一项) 目前就这三个类 有新的再加
         [obj swizzleMethod:@selector(objectAtIndex:) withMethod:@selector(swizzleObjectAtIndexNSArrayI:) withClass:objc_getClass("__NSArrayI")];
         [obj swizzleMethod:@selector(objectAtIndex:) withMethod:@selector(swizzleObjectAtIndexNSArray0:) withClass:objc_getClass("__NSArray0")];
         [obj swizzleMethod:@selector(objectAtIndex:) withMethod:@selector(swizzleObjectAtIndexNSSingleObjectArrayI:) withClass:objc_getClass("__NSSingleObjectArrayI")];
+        [obj swizzleMethod:@selector(objectAtIndexedSubscript:) withMethod:@selector(safeobjectAtIndexedSubscript:) withClass:objc_getClass("__NSArrayI")];
     });
 }
 
@@ -158,11 +159,20 @@
     return nil;
 }
 
+- (id)safeobjectAtIndexedSubscript:(NSUInteger)idx{
+    if(idx<[self count]){
+        return [self safeobjectAtIndexedSubscript:idx];
+    }else{
+        NSLog(@"index is beyond bounds ");
+    }
+    return nil;
+}
+
 - (void)swizzleMethod:(SEL)origSelector withMethod:(SEL)newSelector withClass:(Class)class
 {
     Method originalMethod = class_getInstanceMethod(class, origSelector);
     Method swizzledMethod = class_getInstanceMethod(class, newSelector);
-
+    
     BOOL didAddMethod = class_addMethod(class,
                                         origSelector,
                                         method_getImplementation(swizzledMethod),
